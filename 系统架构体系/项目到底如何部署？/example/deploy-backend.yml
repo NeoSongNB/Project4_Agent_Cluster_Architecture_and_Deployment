@@ -1,0 +1,45 @@
+# 后端 CI/CD 示例：docker build → 推 ACR → 部署 Serverless（对应第 08、15 章）
+# 用法：放到你项目的 .github/workflows/ 目录下。
+# 密钥在 GitHub 仓库 Settings → Secrets 里配置，不要写进代码。
+
+name: 部署后端到 Serverless
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'backend/**' ]   # 仅后端变更时触发（按你的目录结构改）
+
+env:
+  # 用提交号做镜像 tag，方便回滚（第 15 章）
+  IMAGE: registry.cn-hangzhou.aliyuncs.com/your-namespace/my-backend:${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉代码
+        uses: actions/checkout@v4
+
+      # 如果有测试，先跑测试；测试不过就中断（CI 的意义，第 06、07 章）
+      # - name: 跑测试
+      #   run: pytest
+
+      - name: 登录镜像仓库 ACR
+        run: echo "$ACR_PASS" | docker login registry.cn-hangzhou.aliyuncs.com -u "$ACR_USER" --password-stdin
+        env:
+          ACR_USER: ${{ secrets.ACR_USER }}
+          ACR_PASS: ${{ secrets.ACR_PASS }}
+
+      - name: 构建并推送镜像
+        working-directory: ./backend
+        run: |
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: 部署到 Serverless
+        run: |
+          # 调用云厂商 CLI / API，把 Serverless 服务更新为新镜像
+          # 例如阿里云函数计算 / SAE 的更新命令，或腾讯云 CLI
+          echo "通知 Serverless 使用新镜像部署：$IMAGE"
+        env:
+          CLOUD_TOKEN: ${{ secrets.CLOUD_TOKEN }}

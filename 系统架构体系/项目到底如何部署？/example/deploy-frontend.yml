@@ -1,0 +1,43 @@
+# 前端 CI/CD 示例：build → 上传 OSS → 刷新 CDN（对应第 08、11 章）
+# 用法：放到你项目的 .github/workflows/ 目录下。
+# 密钥在 GitHub 仓库 Settings → Secrets 里配置，不要写进代码。
+
+name: 部署前端到 OSS + CDN
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'frontend/**' ]   # 仅前端变更时触发（按你的目录结构改）
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉代码
+        uses: actions/checkout@v4
+
+      - name: 装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 装依赖并构建
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm run build
+
+      # 用官方 ossutil 上传 dist 到 OSS，再刷新 CDN 缓存
+      - name: 上传到 OSS 并刷新 CDN
+        run: |
+          curl -o ossutil.zip https://gosspublic.alicdn.com/ossutil/latest/ossutil-linux-amd64.zip
+          unzip -o ossutil.zip && sudo mv ossutil*/ossutil /usr/local/bin/ 2>/dev/null || true
+          ossutil config -e "$OSS_ENDPOINT" -i "$OSS_KEY" -k "$OSS_SECRET"
+          ossutil cp -r ./frontend/dist "oss://$OSS_BUCKET/" --update
+          # 刷新 CDN（示意，可用 aliyun cli 调用 RefreshObjectCaches）
+          echo "记得刷新 CDN 缓存，让新版本立即生效"
+        env:
+          OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT }}
+          OSS_KEY: ${{ secrets.OSS_KEY }}
+          OSS_SECRET: ${{ secrets.OSS_SECRET }}
+          OSS_BUCKET: ${{ secrets.OSS_BUCKET }}

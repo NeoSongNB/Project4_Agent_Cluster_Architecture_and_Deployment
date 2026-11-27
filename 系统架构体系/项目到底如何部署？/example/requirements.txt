@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+requests
+# 数据库驱动按你用的库选，例如 PostgreSQL：
+# psycopg[binary]
+# sqlalchemy

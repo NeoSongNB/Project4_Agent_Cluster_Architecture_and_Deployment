@@ -1,0 +1,10 @@
+# 不需要打包进镜像的东西，写在这里可以让镜像更小、构建更快
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+.git/
+.gitignore
+*.md
